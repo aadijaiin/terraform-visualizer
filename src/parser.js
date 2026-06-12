@@ -62,7 +62,7 @@ export function parseTerraform(code) {
   }
 
   // Define supported mapping and grouping rules
-  const groupTypes = ['aws_vpc', 'aws_subnet', 'aws_autoscaling_group'];
+  const groupTypes = ['aws_vpc', 'aws_subnet', 'aws_autoscaling_group', 'aws_ecs_cluster', 'aws_eks_cluster'];
   
   // 1. First Pass: Create group and leaf nodes
   for (const [, resource] of Object.entries(parsedResources)) {
@@ -83,6 +83,10 @@ export function parseTerraform(code) {
        // Just pick the first subnet for ASG parenting logic in this MVP
        const asgMatch = resource.properties.vpc_zone_identifier.match(/(aws_subnet\.[a-zA-Z0-9_-]+)/);
        if (asgMatch) parentNode = asgMatch[1];
+    }
+    if (resource.properties.cluster) {
+       const ecsMatch = resource.properties.cluster.match(/(aws_ecs_cluster\.[a-zA-Z0-9_-]+)/);
+       if (ecsMatch) parentNode = ecsMatch[1];
     }
 
     nodes.push({
