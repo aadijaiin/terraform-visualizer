@@ -6,10 +6,8 @@ export function parseTerraform(code) {
   const cleanCode = code.replace(/#.*$/gm, '').replace(/\/\/.*$/gm, '');
 
   // Regex to extract blocks: resource "type" "name" { ... }
-  // We use a simple regex approach, matching until the next closing brace at the same indentation
-  // Since full bracket matching in regex is hard, we'll extract the contents by looking for common properties.
-  
-  const resourceRegex = /resource\s+"([^"]+)"\s+"([^"]+)"\s+\{([^}]*)\}/gs;
+  // Use a regex to find the start of the resource block, then manually balance braces
+  const resourceRegex = /resource\s+"([^"]+)"\s+"([^"]+)"\s*\{/g;
   
   let match;
   const parsedResources = {};
@@ -17,7 +15,17 @@ export function parseTerraform(code) {
   while ((match = resourceRegex.exec(cleanCode)) !== null) {
     const type = match[1];
     const name = match[2];
-    const body = match[3];
+
+    const startIndex = match.index + match[0].length;
+    let braceCount = 1;
+    let i = startIndex;
+    while (i < cleanCode.length && braceCount > 0) {
+      if (cleanCode[i] === '{') braceCount++;
+      if (cleanCode[i] === '}') braceCount--;
+      i++;
+    }
+
+    const body = cleanCode.substring(startIndex, i - 1);
 
     const properties = {};
     
@@ -34,11 +42,22 @@ export function parseTerraform(code) {
       properties[propMatch[1]] = propMatch[2].split(',').map(s => s.trim());
     }
 
+    let instances = 1;
+    if (properties.count) {
+      const parsedCount = parseInt(properties.count, 10);
+      if (!isNaN(parsedCount)) {
+        instances = parsedCount;
+      }
+    } else if (properties.for_each) {
+      instances = '>1'; // we can't easily evaluate for_each length, but it's plural
+    }
+
     parsedResources[`${type}.${name}`] = {
       type,
       name,
       id: `${type}.${name}`,
-      properties
+      properties,
+      instances
     };
   }
 
@@ -46,7 +65,7 @@ export function parseTerraform(code) {
   const groupTypes = ['aws_vpc', 'aws_subnet', 'aws_autoscaling_group'];
   
   // 1. First Pass: Create group and leaf nodes
-  for (const [id, resource] of Object.entries(parsedResources)) {
+  for (const [, resource] of Object.entries(parsedResources)) {
     const isGroup = groupTypes.includes(resource.type);
     
     let parentNode = undefined;
@@ -73,6 +92,7 @@ export function parseTerraform(code) {
       data: {
         label: resource.name,
         resourceType: resource.type,
+        instances: resource.instances,
       },
       parentNode: parentNode,
       // Extent parent helps React Flow, though ELK will handle positioning

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ReactFlow, {
   ReactFlowProvider,
   useNodesState,
@@ -14,6 +14,8 @@ import "reactflow/dist/style.css";
 import { parseTerraform } from "./parser";
 import { computeLayout } from "./layout";
 import { Editor } from "./components/Editor";
+import { Moon, Sun } from "lucide-react";
+
 import { GroupNode } from "./nodes/GroupNode";
 import { ResourceNode } from "./nodes/ResourceNode";
 
@@ -69,14 +71,28 @@ const defaultEdgeOptions = {
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [code, setCode] = useState(INITIAL_CODE);
+
+  const [files, setFiles] = useState([{ id: 'main.tf', name: 'main.tf', content: INITIAL_CODE }]);
+  const [activeFileId, setActiveFileId] = useState('main.tf');
+
   const [error, setError] = useState(null);
+  const [theme, setTheme] = useState('light');
   const { fitView } = useReactFlow();
 
-  const updateGraph = useCallback(async (terraformCode) => {
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    if (newTheme === 'dark') {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  };
+
+  const updateGraph = useCallback(async (allCode) => {
     try {
       setError(null);
-      const { nodes: parsedNodes, edges: parsedEdges } = parseTerraform(terraformCode);
+      const { nodes: parsedNodes, edges: parsedEdges } = parseTerraform(allCode);
       const { nodes: layoutedNodes, edges: layoutedEdges } = await computeLayout(parsedNodes, parsedEdges);
       
       setNodes(layoutedNodes);
@@ -90,23 +106,26 @@ function Flow() {
     }
   }, [setNodes, setEdges, fitView]);
 
-  // Initial load
-  useEffect(() => {
-    updateGraph(code);
-  }, []); // eslint-disable-line
+  // Combined code
+  const combinedCode = files.map(f => f.content).join('\n\n');
 
-  // Debounced code changes
+  // Debounced code changes (handles initial load and subsequent changes)
   useEffect(() => {
     const handler = setTimeout(() => {
-      updateGraph(code);
+      updateGraph(combinedCode);
     }, 500);
     return () => clearTimeout(handler);
-  }, [code, updateGraph]);
+  }, [combinedCode, updateGraph]);
 
   return (
     <div className="app-container">
       <div className="sidebar">
-        <Editor initialCode={code} onChange={setCode} />
+        <Editor
+          files={files}
+          activeFileId={activeFileId}
+          onFilesChange={setFiles}
+          onActiveFileChange={setActiveFileId}
+        />
       </div>
       
       <div className="graph-container">
@@ -123,16 +142,20 @@ function Flow() {
           minZoom={0.1}
           maxZoom={2}
         >
-          <Background color="#cbd5e1" gap={16} />
+          <Background color={theme === 'dark' ? '#334155' : '#cbd5e1'} gap={16} />
           <Controls />
           <MiniMap 
             nodeColor={(n) => {
-              if (n.type === 'group') return '#e2e8f0';
+              if (n.type === 'group') return theme === 'dark' ? '#334155' : '#e2e8f0';
               return '#94a3b8';
             }} 
+            maskColor={theme === 'dark' ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255,255,255,0.8)'}
           />
           <Panel position="top-right" className="header-panel">
             <h1>Terraform Topology</h1>
+            <button className="icon-button" onClick={toggleTheme} title="Toggle Theme">
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
           </Panel>
         </ReactFlow>
       </div>

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { Cloud, Network, Layers } from 'lucide-react';
 
@@ -9,7 +8,7 @@ const GROUP_STYLES = {
   'default': { icon: Cloud, color: '#64748b', label: 'Group', bg: 'rgba(100, 116, 139, 0.05)', borderStyle: 'solid' }
 };
 
-export const GroupNode = ({ data, style }) => {
+export const GroupNode = ({ data }) => {
   const groupInfo = GROUP_STYLES[data.resourceType] || GROUP_STYLES['default'];
   const Icon = groupInfo.icon;
 

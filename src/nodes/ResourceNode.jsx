@@ -1,4 +1,3 @@
-import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { Server, Database, HardDrive, Network, Shield, Box } from 'lucide-react';
 
@@ -15,10 +14,18 @@ export const ResourceNode = ({ data }) => {
   const resourceInfo = ICON_MAP[data.resourceType] || ICON_MAP['default'];
   const Icon = resourceInfo.icon;
 
+  const isMulti = data.instances > 1 || data.instances === '>1';
+
   return (
-    <div className="resource-node" style={{ borderColor: resourceInfo.color }}>
+    <div className={`resource-node ${isMulti ? 'resource-node-stacked' : ''}`} style={{ borderColor: resourceInfo.color }}>
       <Handle type="target" position={Position.Top} className="handle" />
       
+      {isMulti && (
+        <div className="instance-badge" style={{ backgroundColor: resourceInfo.color }}>
+          {data.instances}
+        </div>
+      )}
+
       <div className="resource-icon-container" style={{ backgroundColor: `${resourceInfo.color}15`, color: resourceInfo.color }}>
         <Icon size={20} strokeWidth={2} />
       </div>

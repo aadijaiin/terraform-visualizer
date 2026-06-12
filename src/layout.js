@@ -82,7 +82,7 @@ function measure(id, nodeMap, childrenMap, sizes) {
 function flattenToRFNodes(rootIds, nodeMap, childrenMap, sizes) {
   const result = [];
 
-  function visit(id, isRoot) {
+  function visit(id) {
     const node = nodeMap.get(id);
     const size = sizes.get(id);
     const children = childrenMap.get(id) || [];
@@ -113,7 +113,7 @@ function flattenToRFNodes(rootIds, nodeMap, childrenMap, sizes) {
         const childNode = nodeMap.get(offset.id);
         childNode._position = { x: offset.x, y: offset.y };
       });
-      children.forEach(cid => visit(cid, false));
+      children.forEach(cid => visit(cid));
     }
   }
 
@@ -129,7 +129,7 @@ function flattenToRFNodes(rootIds, nodeMap, childrenMap, sizes) {
   });
 
   // Visit in order: each root, then its full subtree
-  rootIds.forEach(rid => visit(rid, true));
+  rootIds.forEach(rid => visit(rid));
 
   return result;
 }
